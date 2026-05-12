@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     siteName: "Auto7 Carwash",
     images: [
       {
-        url: "/ogimage.png", // Gambar yang muncul pas web lu di-share di WA / IG
+        url: "/ogimage.jpeg", // Gambar yang muncul pas web lu di-share di WA / IG
         width: 1200,
         height: 630,
         alt: "Auto7 Carwash & Detailing",
