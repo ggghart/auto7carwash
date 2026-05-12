@@ -27,7 +27,7 @@ export default function ProfilePage() {
             Mendefinisikan Ulang <br/> <span className="text-red-600">Standar Perawatan</span> Kendaraan.
           </h1>
           <p className="text-lg text-zinc-400 max-w-2xl mx-auto">
-            Auto7 bukan sekadar tempat cuci mobil. Kami adalah studio perawatan otomotif yang berdedikasi untuk menjaga dan mengembalikan kilau investasi Anda.
+            Auto7 bukan sekedar tempat cuci mobil. Kami adalah studio perawatan otomotif yang berdedikasi untuk menjaga dan mengembalikan kilau kendaraan Anda.
           </p>
         </div>
       </section>
@@ -77,7 +77,7 @@ export default function ProfilePage() {
       <section className="py-24 bg-black border-y border-zinc-900">
         <div className="container mx-auto px-6">
           <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold mb-4">Nilai Inti <span className="text-red-600">Auto7</span></h2>
+            <h2 className="text-3xl font-bold mb-4">Visi Misi <span className="text-red-600">Auto7</span></h2>
             <p className="text-zinc-400">Pilar utama yang membuat layanan kami berbeda.</p>
           </div>
 
