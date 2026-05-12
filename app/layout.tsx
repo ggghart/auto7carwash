@@ -14,13 +14,13 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Auto7 Carwash & Detailing | Perawatan Mobil Premium",
-  description: "Studio perawatan otomotif premium. Melayani cuci mobil detail, interior cleaning, paint correction, hingga nano ceramic coating dengan SOP ketat dan tim profesional.",
+  description: "Perawatan otomotif premium. Melayani cuci mobil detailing, interior cleaning, paint correction, hingga nano ceramic coating dengan SOP ketat dan tim profesional.",
   icons: {
     icon: '/auto7.png', // Ini otomatis bikin logo Auto7 lu jadi favicon di tab browser!
   },
   openGraph: {
     title: "Auto7 Carwash & Detailing",
-    description: "Mendefinisikan ulang standar perawatan kendaraan Anda.",
+    description: "Your Car's Cleanest Secret. Melayani cuci mobil detailing, interior cleaning, paint correction, hingga nano ceramic coating dengan SOP ketat dan tim profesional.",
     url: "https://auto7carwash.vercel.app", // Nanti ganti sama domain asli lu bro
     siteName: "Auto7 Carwash",
     images: [
