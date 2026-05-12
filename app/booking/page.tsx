@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import { useSession, signIn } from 'next-auth/react';
 import { Car, Settings, Calendar, Clock, CreditCard, ShieldCheck } from 'lucide-react';
+import { supabase } from '../../lib/supabase'; // <-- Import modul Supabase
+import { useRouter } from 'next/navigation'; // <-- Buat pindah halaman abis sukses
 
 // --- DATA MASTER HARGA ---
 const PRICING = {
@@ -16,6 +18,7 @@ const CAR_SIZES = ['Small', 'Medium', 'Large', 'Luxury'];
 
 export default function BookingPage() {
   const { data: session, status } = useSession();
+  const router = useRouter(); // <-- Inisialisasi router buat redirect
 
   // --- STATE MANAGEMENT ---
   const [carSize, setCarSize] = useState<string>('Medium');
@@ -24,14 +27,47 @@ export default function BookingPage() {
   const [service, setService] = useState<string>('Premium Wash');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false); // <-- State buat loading submit
 
   // --- LOGIKA PERHITUNGAN ---
   // @ts-ignore (Biar ga rewel soal tipe data key objek)
   const totalPrice = PRICING[service][carSize] || 0;
 
-  // Fungsi pura-pura buat submit sementara
-  const handleBookingSubmit = () => {
-    alert('Mantap! Nanti kita sambungin tombol ini ke Supabase di tahap selanjutnya.');
+  // --- FUNGSI SUBMIT KE SUPABASE ---
+  const handleBookingSubmit = async () => {
+    setIsSubmitting(true);
+    try {
+      // Ambil ID user dari "KTP Digital" NextAuth
+      const userId = (session?.user as any)?.id;
+
+      if (!userId) {
+        alert("Sesi tidak valid. Silakan login ulang.");
+        return;
+      }
+
+      // Lempar data ke tabel bookings
+      const { error } = await supabase.from('bookings').insert({
+        user_id: userId,
+        vehicle_type: carSize,
+        car_brand: carBrand,
+        plate_number: plateNumber, 
+        service_type: service,
+        booking_date: date,
+        time_slot: time
+      });
+
+      if (error) throw error;
+
+      // Kalau sukses
+      alert("Booking berhasil masuk antrean! Mantap bro!");
+      router.push('/'); // Lempar balik ke home dulu
+      
+    } catch (error) {
+      console.error("Wah, gagal insert ke database nih:", error);
+      alert("Gagal memproses booking. Coba cek console inspect element deh.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -129,7 +165,6 @@ export default function BookingPage() {
                   <label className="block text-sm text-zinc-400 mb-2">Pilih Tanggal</label>
                   <input 
                     type="date" 
-                    // Set minimal tanggal ke hari ini biar user ga milih tanggal kemaren
                     min={new Date().toISOString().split('T')[0]} 
                     className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-red-500 transition-colors color-scheme-dark"
                     value={date}
@@ -208,11 +243,17 @@ export default function BookingPage() {
               ) : (
                 <button 
                   onClick={handleBookingSubmit}
-                  // Tombol mati kalau form belum diisi lengkap
-                  disabled={!carBrand || !plateNumber || !date || !time}
-                  className="w-full bg-red-600 hover:bg-red-700 disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed text-white py-4 rounded-xl font-bold transition-all shadow-[0_0_15px_rgba(220,38,38,0.3)] disabled:shadow-none"
+                  disabled={!carBrand || !plateNumber || !date || !time || isSubmitting}
+                  className="w-full bg-red-600 hover:bg-red-700 disabled:bg-zinc-800 disabled:text-zinc-500 disabled:cursor-not-allowed text-white py-4 rounded-xl font-bold transition-all shadow-[0_0_15px_rgba(220,38,38,0.3)] disabled:shadow-none flex justify-center items-center gap-2"
                 >
-                  Konfirmasi Booking
+                  {isSubmitting ? (
+                    <>
+                      <div className="w-5 h-5 rounded-full border-2 border-zinc-400 border-t-white animate-spin"></div>
+                      Menyimpan Data...
+                    </>
+                  ) : (
+                    "Konfirmasi Booking"
+                  )}
                 </button>
               )}
 
