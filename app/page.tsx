@@ -23,21 +23,22 @@ export default function LandingPage() {
           />
         </div>
 
-        <div className="container mx-auto px-6 relative z-20">
+        <div className="container mx-auto px-6 relative z-20 pt-32 md:pt-0 min-h-screen flex flex-col justify-center">
           <div className="max-w-3xl">
-            <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 leading-tight">
+            <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-6 leading-[1.1]">
               Kembalikan <span className="text-red-600">Kilau Sempurna</span> Mobil Kesayangan Anda.
             </h1>
             <p className="text-lg md:text-xl text-zinc-300 mb-10 max-w-xl">
               Perawatan premium dengan teknologi terkini dan sentuhan profesional. Bebas antri panjang dengan sistem Priority Booking kami.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
-              <button className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-full font-semibold text-lg transition-all transform hover:scale-105 shadow-[0_0_20px_rgba(220,38,38,0.4)]">
+              {/* Gunakan tag <a> biar lurus ke halaman booking */}
+              <a href="/booking" className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-full font-semibold text-lg transition-all transform hover:scale-105 shadow-[0_0_20px_rgba(220,38,38,0.4)] text-center">
                 Booking Sekarang
-              </button>
-              <button className="bg-transparent border border-zinc-500 hover:border-white hover:bg-zinc-900 text-white px-8 py-4 rounded-full font-semibold text-lg transition-all">
+              </a>
+              <a href="#services" className="bg-transparent border border-zinc-500 hover:border-white hover:bg-zinc-900 text-white px-8 py-4 rounded-full font-semibold text-lg transition-all text-center">
                 Lihat Layanan
-              </button>
+              </a>
             </div>
           </div>
         </div>
