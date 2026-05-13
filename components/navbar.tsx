@@ -15,52 +15,44 @@ export default function Navbar() {
 
   useEffect(() => {
     // 1. Efek buat ganti background navbar pas di-scroll
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 20);
-    };
+    const handleScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
 
-    // 2. Pantau status login dari Supabase
+    // 2. Tarik data sesi
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user || null);
+      setIsLoadingSafe(false);
+    });
+
+    // 3. Pantau status login
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user || null);
       setIsLoadingSafe(false);
     });
 
-    // 3. Fix loading stuck kalau user klik back di browser
-    const handlePageShow = (event: PageTransitionEvent) => {
-      if (event.persisted) {
-        setIsLoadingSafe(false);
-      }
-    };
-    window.addEventListener('pageshow', handlePageShow);
-
     return () => {
       window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('pageshow', handlePageShow);
       authListener.subscription.unsubscribe();
     };
   }, []);
 
-  // Fungsi Login Supabase
-  const handleLogin = async () => {
-    try {
-      setIsLoadingSafe(true);
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: { redirectTo: window.location.origin }
-      });
-      
-      if (error) {
-        console.error("Login error:", error);
-        setIsLoadingSafe(false);
-      }
-    } catch (error) {
-      console.error("Login exception:", error);
-      setIsLoadingSafe(false);
+  // --- EFEK BARU: KUNCI SCROLL LAYAR SAAT MENU DIBUKA ---
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden'; // Kunci layar mati
+    } else {
+      document.body.style.overflow = 'unset';  // Lepas kunci
     }
-  };
+    // Bersihin efek kalau komponen dihancurkan
+    return () => { document.body.style.overflow = 'unset'; };
+  }, [isMobileMenuOpen]);
 
-  // Fungsi handleLogout udah dihapus dari sini karena kita pindahin penuh ke halaman Dashboard
+  const handleLogin = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin }
+    });
+  };
 
   return (
     <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${
@@ -101,7 +93,6 @@ export default function Navbar() {
           {isLoadingSafe ? (
             <div className="w-9 h-9 rounded-full border-2 border-zinc-800 border-t-red-600 animate-spin"></div>
           ) : user ? (
-            // --- DESKTOP: TOMBOL PROFIL PILL (FOTO + NAMA DEPAN) ---
             <a 
               href="/dashboard" 
               title="Masuk ke Dashboard"
@@ -113,7 +104,6 @@ export default function Navbar() {
                 className="w-7 h-7 rounded-full"
               />
               <span className="text-sm font-medium text-zinc-300 group-hover:text-red-500 transition-colors">
-                {/* Kita split namanya buat ngambil nama depan aja biar navbar nggak kepanjangan */}
                 {user.user_metadata?.full_name?.split(' ')[0] || 'User'}
               </span>
             </a>
@@ -128,56 +118,87 @@ export default function Navbar() {
 
         </div>
 
-        {/* MOBILE MENU TOGGLE */}
+        {/* MOBILE MENU TOGGLE (TOMBOL GARIS 3) */}
         <button 
           className="md:hidden text-white"
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          onClick={() => setIsMobileMenuOpen(true)} // Cukup set true, karena menu nutupnya dari dalam kotak
         >
-          {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          <Menu className="w-6 h-6" />
         </button>
 
       </div>
 
-      {/* MOBILE DROPDOWN MENU */}
+      {/* ==============================================
+          FULL SCREEN MOBILE MENU (TAKEOVER + BLUR)
+      ================================================ */}
       {isMobileMenuOpen && (
-        <div className="md:hidden absolute top-full left-0 w-full bg-zinc-950 border-b border-zinc-800 py-4 px-6 flex flex-col gap-4 shadow-xl">
-          <a href="/#services" className="text-zinc-300 hover:text-red-500">Layanan</a>
-          <a href="/#benefits" className="text-zinc-300 hover:text-red-500">Keunggulan</a>
-          <a href="/#gallery" className="text-zinc-300 hover:text-red-500">Galeri</a>
-          <a href="/#testimonials" className="text-zinc-300 hover:text-red-500">Testimoni</a>
-          <a href="/#location" className="text-zinc-300 hover:text-red-500">Lokasi</a>
-          <a href="/profile" className="text-zinc-300 hover:text-red-500">Profile</a>
+        <div className="md:hidden fixed inset-0 z-[100] px-4 pt-20 flex justify-center items-start">
           
-          <hr className="border-zinc-800" />
-          
-          <a href="/booking" className="bg-red-600 text-center text-white w-full py-3 rounded-lg font-bold">Booking Sekarang</a>
+          {/* 1. KACA FILM (OVERLAY BLUR TOTAL) */}
+          <div 
+            className="absolute inset-0 bg-black/70 backdrop-blur-md transition-opacity"
+            onClick={() => setIsMobileMenuOpen(false)} // Kalau ngeklik luar kotak, otomatis ketutup
+          />
 
-          {/* MOBILE AUTH SECTION */}
-          <div className="pt-2">
-            {isLoadingSafe ? (
-               <div className="text-zinc-500 text-sm text-center">Memuat profil...</div>
-            ) : user ? (
-              // --- MOBILE: TOMBOL LEBAR FOTO + NAMA DEPAN ---
-              <a 
-                href="/dashboard" 
-                className="flex items-center justify-center gap-3 bg-zinc-900 border border-zinc-800 hover:border-red-500 p-3 rounded-xl transition-all group"
+          {/* 2. KOTAK MENU "FLOATING ISLAND" */}
+          <div className="w-full bg-zinc-900 border border-zinc-800 p-6 rounded-3xl flex flex-col gap-4 shadow-2xl relative z-10 animate-in fade-in zoom-in-95 duration-200">
+            
+            {/* Header Kotak Menu & Tombol Close (X) */}
+            <div className="flex justify-between items-center border-b border-zinc-800 pb-4 mb-2">
+              <span className="font-bold text-white text-lg">Menu Navigasi</span>
+              <button 
+                onClick={() => setIsMobileMenuOpen(false)} 
+                className="text-zinc-400 hover:text-red-500 bg-zinc-950 p-2 rounded-full border border-zinc-800 transition-colors"
               >
-                <img 
-                  src={user.user_metadata?.avatar_url || ''} 
-                  alt="Profile" 
-                  className="w-8 h-8 rounded-full" 
-                />
-                <span className="text-sm font-medium text-zinc-300 group-hover:text-red-500 transition-colors">
-                  Dashboard {user.user_metadata?.full_name?.split(' ')[0]}
-                </span>
-              </a>
-            ) : (
-              <button onClick={handleLogin} className="w-full border border-zinc-700 hover:bg-zinc-800 text-white px-4 py-3 rounded-lg text-sm font-bold transition-all">
-                Login dengan Google
+                <X className="w-5 h-5" />
               </button>
-            )}
-          </div>
+            </div>
 
+            {/* List Navigasi */}
+            {/* Note: Tiap klik menu, menu mobile otomatis ketutup biar layarnya bersih lagi */}
+            <a href="/#services" className="text-zinc-300 hover:text-red-500 font-medium py-1" onClick={() => setIsMobileMenuOpen(false)}>Layanan</a>
+            <a href="/#benefits" className="text-zinc-300 hover:text-red-500 font-medium py-1" onClick={() => setIsMobileMenuOpen(false)}>Keunggulan</a>
+            <a href="/#gallery" className="text-zinc-300 hover:text-red-500 font-medium py-1" onClick={() => setIsMobileMenuOpen(false)}>Galeri</a>
+            <a href="/#testimonials" className="text-zinc-300 hover:text-red-500 font-medium py-1" onClick={() => setIsMobileMenuOpen(false)}>Testimoni</a>
+            <a href="/#location" className="text-zinc-300 hover:text-red-500 font-medium py-1" onClick={() => setIsMobileMenuOpen(false)}>Lokasi</a>
+            <a href="/profile" className="text-zinc-300 hover:text-red-500 font-medium py-1" onClick={() => setIsMobileMenuOpen(false)}>Profile</a>
+            
+            <hr className="border-zinc-800 my-2" />
+            
+            <a href="/booking" className="bg-red-600 text-center text-white w-full py-3.5 rounded-xl font-bold shadow-[0_0_15px_rgba(220,38,38,0.3)] transition-all" onClick={() => setIsMobileMenuOpen(false)}>
+              Booking Sekarang
+            </a>
+
+            {/* MOBILE AUTH SECTION */}
+            <div className="pt-2">
+              {isLoadingSafe ? (
+                 <div className="text-zinc-500 text-sm text-center py-2">Memuat profil...</div>
+              ) : user ? (
+                <a 
+                  href="/dashboard" 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center justify-center gap-3 bg-zinc-950 border border-zinc-800 hover:border-red-500 p-3 rounded-xl transition-all group"
+                >
+                  <img 
+                    src={user.user_metadata?.avatar_url || ''} 
+                    alt="Profile" 
+                    className="w-8 h-8 rounded-full" 
+                  />
+                  <span className="text-sm font-medium text-zinc-300 group-hover:text-red-500 transition-colors">
+                    Dashboard {user.user_metadata?.full_name?.split(' ')[0]}
+                  </span>
+                </a>
+              ) : (
+                <button 
+                  onClick={() => { setIsMobileMenuOpen(false); handleLogin(); }} 
+                  className="w-full border border-zinc-700 hover:bg-zinc-800 text-white px-4 py-3.5 rounded-xl text-sm font-bold transition-all"
+                >
+                  Login dengan Google
+                </button>
+              )}
+            </div>
+
+          </div>
         </div>
       )}
     </nav>
