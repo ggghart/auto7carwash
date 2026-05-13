@@ -3,23 +3,64 @@
 import React, { useState, useEffect } from 'react';
 import { Menu, X } from 'lucide-react'; 
 import Image from 'next/image'; 
-import { signIn, signOut, useSession } from 'next-auth/react'; 
+import { supabase } from '../lib/supabase';
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
-  // Narik status login dari NextAuth
-  const { data: session, status } = useSession();
+  // State khusus buat Supabase Auth
+  const [user, setUser] = useState<any>(null);
+  const [isLoadingSafe, setIsLoadingSafe] = useState(true);
 
-  // Efek buat ganti background navbar pas di-scroll
   useEffect(() => {
+    // 1. Efek buat ganti background navbar pas di-scroll
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
     };
     window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+
+    // 2. Pantau status login dari Supabase
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user || null);
+      setIsLoadingSafe(false);
+    });
+
+    // 3. Fix loading stuck kalau user klik back di browser
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        setIsLoadingSafe(false);
+      }
+    };
+    window.addEventListener('pageshow', handlePageShow);
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('pageshow', handlePageShow);
+      authListener.subscription.unsubscribe();
+    };
   }, []);
+
+  // Fungsi Login Supabase
+  const handleLogin = async () => {
+    try {
+      setIsLoadingSafe(true);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin }
+      });
+      
+      if (error) {
+        console.error("Login error:", error);
+        setIsLoadingSafe(false);
+      }
+    } catch (error) {
+      console.error("Login exception:", error);
+      setIsLoadingSafe(false);
+    }
+  };
+
+  // Fungsi handleLogout udah dihapus dari sini karena kita pindahin penuh ke halaman Dashboard
 
   return (
     <nav className={`fixed top-0 w-full z-50 transition-all duration-300 ${
@@ -46,7 +87,7 @@ export default function Navbar() {
           <a href="/#gallery" className="hover:text-red-500 transition-colors">Galeri</a>
           <a href="/#testimonials" className="hover:text-red-500 transition-colors">Testimoni</a>
           <a href="/#location" className="hover:text-red-500 transition-colors">Lokasi</a>
-          <a href="/profile" className="hover:text-red-500 transition-colors">Profile</a> {/* <-- Pindah ke paling bawah sini */}
+          <a href="/profile" className="hover:text-red-500 transition-colors">Profile</a>
         </div>
 
         {/* 3. ACTION BUTTONS (DESKTOP) */}
@@ -56,26 +97,29 @@ export default function Navbar() {
             Booking
           </a>
 
-          {/* LOGIKA OTENTIKASI NEXTAUTH */}
-          {status === 'loading' ? (
+          {/* LOGIKA OTENTIKASI SUPABASE */}
+          {isLoadingSafe ? (
             <div className="w-9 h-9 rounded-full border-2 border-zinc-800 border-t-red-600 animate-spin"></div>
-          ) : session ? (
-            <div className="flex items-center gap-3">
+          ) : user ? (
+            // --- DESKTOP: TOMBOL PROFIL PILL (FOTO + NAMA DEPAN) ---
+            <a 
+              href="/dashboard" 
+              title="Masuk ke Dashboard"
+              className="flex items-center gap-3 bg-zinc-900 border border-zinc-800 hover:border-red-500 rounded-full pl-1.5 pr-4 py-1.5 transition-all group"
+            >
               <img 
-                src={session.user?.image || ''} 
+                src={user.user_metadata?.avatar_url || ''} 
                 alt="Profile" 
-                className="w-9 h-9 rounded-full border-2 border-zinc-800"
+                className="w-7 h-7 rounded-full"
               />
-              <button 
-                onClick={() => signOut()} 
-                className="text-xs font-medium text-zinc-400 hover:text-red-500 transition-colors"
-              >
-                Logout
-              </button>
-            </div>
+              <span className="text-sm font-medium text-zinc-300 group-hover:text-red-500 transition-colors">
+                {/* Kita split namanya buat ngambil nama depan aja biar navbar nggak kepanjangan */}
+                {user.user_metadata?.full_name?.split(' ')[0] || 'User'}
+              </span>
+            </a>
           ) : (
             <button 
-              onClick={() => signIn('google')} 
+              onClick={handleLogin} 
               className="text-sm font-bold bg-white text-black hover:bg-zinc-200 px-5 py-2 rounded-full transition-all"
             >
               Login
@@ -102,7 +146,7 @@ export default function Navbar() {
           <a href="/#gallery" className="text-zinc-300 hover:text-red-500">Galeri</a>
           <a href="/#testimonials" className="text-zinc-300 hover:text-red-500">Testimoni</a>
           <a href="/#location" className="text-zinc-300 hover:text-red-500">Lokasi</a>
-          <a href="/profile" className="text-zinc-300 hover:text-red-500">Profile</a> {/* <-- Pindah ke paling bawah sini juga */}
+          <a href="/profile" className="text-zinc-300 hover:text-red-500">Profile</a>
           
           <hr className="border-zinc-800" />
           
@@ -110,18 +154,25 @@ export default function Navbar() {
 
           {/* MOBILE AUTH SECTION */}
           <div className="pt-2">
-            {status === 'loading' ? (
+            {isLoadingSafe ? (
                <div className="text-zinc-500 text-sm text-center">Memuat profil...</div>
-            ) : session ? (
-              <div className="flex items-center justify-between bg-zinc-900 p-3 rounded-lg border border-zinc-800">
-                <div className="flex items-center gap-3">
-                  <img src={session.user?.image || ''} alt="Profile" className="w-8 h-8 rounded-full" />
-                  <span className="text-sm font-medium text-zinc-300">{session.user?.name}</span>
-                </div>
-                <button onClick={() => signOut()} className="text-sm font-bold text-red-500 hover:text-red-400">Logout</button>
-              </div>
+            ) : user ? (
+              // --- MOBILE: TOMBOL LEBAR FOTO + NAMA DEPAN ---
+              <a 
+                href="/dashboard" 
+                className="flex items-center justify-center gap-3 bg-zinc-900 border border-zinc-800 hover:border-red-500 p-3 rounded-xl transition-all group"
+              >
+                <img 
+                  src={user.user_metadata?.avatar_url || ''} 
+                  alt="Profile" 
+                  className="w-8 h-8 rounded-full" 
+                />
+                <span className="text-sm font-medium text-zinc-300 group-hover:text-red-500 transition-colors">
+                  Dashboard {user.user_metadata?.full_name?.split(' ')[0]}
+                </span>
+              </a>
             ) : (
-              <button onClick={() => signIn('google')} className="w-full border border-zinc-700 hover:bg-zinc-800 text-white px-4 py-3 rounded-lg text-sm font-bold transition-all">
+              <button onClick={handleLogin} className="w-full border border-zinc-700 hover:bg-zinc-800 text-white px-4 py-3 rounded-lg text-sm font-bold transition-all">
                 Login dengan Google
               </button>
             )}
