@@ -61,15 +61,37 @@ export default function BookingPage() {
       setUser(session?.user || null);
       setIsLoadingSafe(false);
     });
-    return () => { authListener.subscription.unsubscribe(); };
+
+    // Fix loading stuck kalau user klik back di browser
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        setIsLoadingSafe(false);
+      }
+    };
+    window.addEventListener('pageshow', handlePageShow);
+
+    return () => { 
+      window.removeEventListener('pageshow', handlePageShow);
+      authListener.subscription.unsubscribe(); 
+    };
   }, []);
 
   const handleLogin = async () => {
-    setIsLoadingSafe(true);
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin }
-    });
+    try {
+      setIsLoadingSafe(true);
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin }
+      });
+      
+      if (error) {
+        console.error("Login error:", error);
+        setIsLoadingSafe(false);
+      }
+    } catch (error) {
+      console.error("Login exception:", error);
+      setIsLoadingSafe(false);
+    }
   };
 
   const handleBookingSubmit = async () => {
